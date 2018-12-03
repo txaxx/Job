@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.1" halcon_version="17.12">
+<procedure name="main">
+<interface/>
+<body>
+<c>* Application program to demonstrate the calibration of</c>
+<c>* a binocular stereo system using the operators</c>
+<c>* find_caltab, find_marks_and_pose, and binocular_calibration.</c>
+<c>* </c>
+<c>* As an alternative, a calibration data model could be used.</c>
+<c>* Please refer to the example program</c>
+<c>* examples/solution_guide/3d_vision/stereo_calibration.hdev.</c>
+<c>* </c>
+<c>* We have a stereo setup of two cameras ('camera1 is left of camera2').</c>
+<c>* Both cameras will be calibrated by a couple of images of</c>
+<c>* a 30mm calibration plate. An image pair will be rectified</c>
+<c>* to epipolar images and the epipolar constraint will be checked.</c>
+<c>* ---------------------------------------------------------</c>
+<c>* Set the image path</c>
+<l>ImgPath := 'E:/Halcon/Images/1130/'</l>
+<l>ImgPath_C := 'E:/Halcon/Images/1130/calib/'</l>
+<c>* Read the first images to get their size</c>
+<l>Index := 1</l>
+<l>read_image (ImageL, ImgPath_C + 'left/image_' + Index$'02d')</l>
+<l>read_image (ImageR, ImgPath_C + 'right/image_' + Index$'02d')</l>
+<c>* Reopen the windows with an appropriate size</c>
+<l>dev_close_window ()</l>
+<l>dev_update_off ()</l>
+<l>get_image_size (ImageL, WidthL, HeightL)</l>
+<l>dev_open_window (0, 0, WidthL/4, HeightL/4, 'black', WindowHandle1)</l>
+<l>dev_set_draw ('margin')</l>
+<l>dev_set_color ('green')</l>
+<l>set_display_font (WindowHandle1, 14, 'mono', 'true', 'false')</l>
+<l>get_image_size (ImageR, WidthR, HeightR)</l>
+<l>dev_open_window (0, WidthL/4, WidthL/4, HeightL/4, 'black', WindowHandle2)</l>
+<l>dev_set_draw ('margin')</l>
+<l>dev_set_color ('green')</l>
+<c>* Read the model calibration points.</c>
+<l>CaltabFile := 'E:/Halcon/Images/1113/caltab160.descr'</l>
+<l>caltab_points (CaltabFile, X, Y, Z)</l>
+<c>* Set the initial values for the internal camera parameters</c>
+<l>gen_cam_par_area_scan_division (0.012, 0, 5.86e-006, 5.86e-006, WidthL/2, HeightL/2, WidthL, HeightL, StartCamParL)</l>
+<l>gen_cam_par_area_scan_division (0.012, 0, 5.86e-006, 5.86e-006, WidthL/2, HeightL/2, WidthL, HeightL, StartCamParR)</l>
+<l>*StartCamParR := StartCamParL</l>
+<c>* Parameter settings for find_caltab and find_marks_and_pose</c>
+<l>MinDiamMarks := 4</l>
+<l>StartThresh := 100</l>
+<l>DeltaThresh := 10</l>
+<l>MinThresh := 10</l>
+<l>Alpha := 0.9</l>
+<l>MinContLength := 15</l>
+<l>MaxDiamMarks := 100</l>
+<c>* Create the tuples in which the image coordinates of the</c>
+<c>* calibration marks and the initial poses will be accumulated</c>
+<l>RowsL := []</l>
+<l>ColsL := []</l>
+<l>StartPosesL := []</l>
+<l>RowsR := []</l>
+<l>ColsR := []</l>
+<l>StartPosesR := []</l>
+<c>* Start the loop over the calibration images</c>
+<l>for Index := 1 to 20 by 1</l>
+<c>    * Read the calibration images</c>
+<l>    read_image (ImageL, ImgPath_C + 'left/image_' + Index$'02d')</l>
+<l>    read_image (ImageR, ImgPath_C + 'right/image_' + Index$'02d')</l>
+<l>    rgb1_to_gray (ImageL, GrayImage)</l>
+<l>    stop()</l>
+<c>    * Search for the calibration plate</c>
+<l>    find_caltab (ImageL, CaltabL, CaltabFile, 3, 80, MinDiamMarks)</l>
+<l>    find_caltab (ImageR, CaltabR, CaltabFile, 3, 90, MinDiamMarks)</l>
+<c>    * Display calibration plate regions</c>
+<l>    dev_set_window (WindowHandle1)</l>
+<l>    dev_display (ImageL)</l>
+<l>    dev_display (CaltabL)</l>
+<l>    dev_set_window (WindowHandle2)</l>
+<l>    dev_display (ImageR)</l>
+<l>    dev_display (CaltabR)</l>
+<c>    * Extraction of marks and pose as well as visualization of the</c>
+<c>    * results for the second image.</c>
+<l>    find_marks_and_pose (ImageL, CaltabL, CaltabFile, StartCamParL, StartThresh, DeltaThresh, MinThresh, Alpha, MinContLength, MaxDiamMarks, RCoordL, CCoordL, StartPoseL)</l>
+<l>    disp_caltab (WindowHandle1, CaltabFile, StartCamParL, StartPoseL, 1)</l>
+<c>    * Extraction of marks and pose as well as visualization of the</c>
+<c>    * results for the second image.</c>
+<l>    find_marks_and_pose (ImageR, CaltabR, CaltabFile, StartCamParR, StartThresh, DeltaThresh, MinThresh, Alpha, MinContLength, MaxDiamMarks, RCoordR, CCoordR, StartPoseR)</l>
+<l>    disp_caltab (WindowHandle2, CaltabFile, StartCamParR, StartPoseR, 1)</l>
+<c>    * Accumulate the image coordinates of the calibration marks</c>
+<c>    * as well as the estimated initial poses for all stereo pairs,</c>
+<c>    * where the poses has been estimated consistently.</c>
+<l>    RowsL := [RowsL,RCoordL]</l>
+<l>    ColsL := [ColsL,CCoordL]</l>
+<l>    StartPosesL := [StartPosesL,StartPoseL]</l>
+<l>    RowsR := [RowsR,RCoordR]</l>
+<l>    ColsR := [ColsR,CCoordR]</l>
+<l>    StartPosesR := [StartPosesR,StartPoseR]</l>
+<l>*     stop()</l>
+<l>endfor</l>
+<c>* Perform the actual calibration</c>
+<l>binocular_calibration (X, Y, Z, RowsL, ColsL, RowsR, ColsR, StartCamParL, StartCamParR, StartPosesL, StartPosesR, 'all', CamParamL, CamParamR, NFinalPoseL, NFinalPoseR, cLPcR, Errors)</l>
+<c>* If required, save the results to disk:</c>
+<l>* write_cam_par (CamParamL, ImgPath_C + 'cam_left.dat')</l>
+<l>* write_cam_par (CamParamR, ImgPath_C + 'cam_right.dat')</l>
+<l>* write_pose (cLPcR, ImgPath_C + '/pos_righttoleft.dat')</l>
+<c></c>
+<c>* Generate the rectification maps</c>
+<l>read_cam_par (ImgPath_C+'cam_leftm.dat', CamParamL)</l>
+<l>read_cam_par (ImgPath_C+'cam_rightm.dat', CamParamR)</l>
+<l>read_pose (ImgPath_C+'pos_righttoleft.dat', cLPcR)</l>
+<l>gen_binocular_rectification_map (MapL, MapR, CamParamL, CamParamR, cLPcR, 1, 'geometric', 'bilinear', RectCamParL, RectCamParR, CamPoseRectL, CamPoseRectR, RectLPosRectR)</l>
+<c>* Read in a stereo image pair, acquired with the stereo camera system,</c>
+<c>* which has been calibrated, just now.</c>
+<l>read_image (ImageL, ImgPath_C + 'left/image_13')</l>
+<l>read_image (ImageR, ImgPath_C + 'right/image_13')</l>
+<c>* Rectify the stereo images and display them</c>
+<l>map_image (ImageL, MapL, ImageRectifiedL)</l>
+<l>map_image (ImageR, MapR, ImageRectifiedR)</l>
+<c>* Check the epipolar constraint on the rectified images,</c>
+<c>* (the differences of the features' row coordinates should be small)</c>
+<c>* and visualize the result (including some corresponding epipolar lines)</c>
+<c>*检查修正后的图像的上极约束(特征的行坐标的差异应该很小)，并将结果可视化(包括一些对应的极线)</c>
+<l>check_epipolar_constraint (ImageRectifiedL, ImageRectifiedR, RectCamParL, RectCamParR, WindowHandle1, WindowHandle2, CaltabFile, EpipolarError)</l>
+<c></c>
+<l>read_cam_par (ImgPath_C+'cam_left.dat', CamParamLc)</l>
+<l>read_cam_par (ImgPath_C+'cam_right.dat', CamParamRc)</l>
+<l>read_pose (ImgPath_C+'pos_right2left.dat', RelPosec)</l>
+<l>gen_binocular_rectification_map (MapLc, MapRc, CamParamLc, CamParamRc, RelPosec, 1, 'geometric', 'bilinear', RectCamParLc, RectCamParRc, CamPoseRectLc, CamPoseRectRc, RectLPosRectRc)</l>
+<l>map_image (ImageL, MapLc, ImageRectifiedLc)</l>
+<l>map_image (ImageR, MapRc, ImageRectifiedRc)</l>
+<l>check_epipolar_constraint (ImageRectifiedLc, ImageRectifiedRc, RectCamParLc, RectCamParRc, WindowHandle1, WindowHandle2, CaltabFile, EpipolarErrorc)</l>
+<c></c>
+<c></c>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+<procedure name="check_epipolar_constraint">
+<interface>
+<io>
+<par name="ImageRectifiedL" base_type="iconic" dimension="0"/>
+<par name="ImageRectifiedR" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="RectCamParL" base_type="ctrl" dimension="0"/>
+<par name="RectCamParR" base_type="ctrl" dimension="0"/>
+<par name="WindowHandle1" base_type="ctrl" dimension="0"/>
+<par name="WindowHandle2" base_type="ctrl" dimension="0"/>
+<par name="CaltabFile" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="EpipolarError" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c>* Check the epipolar constraint on the rectified images:</c>
+<c>*    (the differences of the features' row coordinates should be small)</c>
+<c>* Parameter settings for find_caltab and find_marks_and_pose</c>
+<l>SizeGauss := 3</l>
+<l>MarkThresh := 60</l>
+<l>MinDiamMarks := 5</l>
+<l>StartThresh := 100</l>
+<l>DeltaThresh := 10</l>
+<l>MinThresh := 18</l>
+<l>Alpha := 0.9</l>
+<l>MinContLength := 15</l>
+<l>MaxDiamMarks := 100</l>
+<c>* </c>
+<c>* Find the calibration points and the correspondences of these points in both images:</c>
+<l>find_caltab (ImageRectifiedL, CaltabL, CaltabFile, 3, 60, MinDiamMarks)</l>
+<l>find_marks_and_pose (ImageRectifiedL, CaltabL, CaltabFile, RectCamParL, StartThresh, DeltaThresh, MinThresh, Alpha, MinContLength, MaxDiamMarks, RCoordL, CCoordL, StartPoseL)</l>
+<l>find_caltab (ImageRectifiedR, CaltabR, CaltabFile, SizeGauss, 120, MinDiamMarks)</l>
+<l>find_marks_and_pose (ImageRectifiedR, CaltabR, CaltabFile, RectCamParR, StartThresh, DeltaThresh, MinThresh, Alpha, MinContLength, MaxDiamMarks, RCoordR, CCoordR, StartPoseR)</l>
+<l>EpipolarError := max(abs(RCoordR - RCoordL))</l>
+<c>* Visualize the rectified images and the result of the epipolar test:</c>
+<l>get_cam_par_data (RectCamParL, 'image_width', ImageWidthL)</l>
+<l>get_cam_par_data (RectCamParL, 'image_height', ImageHeightL)</l>
+<l>dev_set_window (WindowHandle1)</l>
+<l>dev_set_color ('yellow')</l>
+<l>dev_clear_window ()</l>
+<l>dev_set_part (0, 0, ImageHeightL - 1, ImageWidthL - 1)</l>
+<l>dev_display (ImageRectifiedL)</l>
+<l>for Index := 6 to 49 by 7</l>
+<c>    * Display the epipolar line of a certain point</c>
+<l>    gen_contour_polygon_xld (EpipolarLine, [round(RCoordL[Index]),round(RCoordL[Index])], [0,ImageWidthL - 1])</l>
+<l>    dev_display (EpipolarLine)</l>
+<l>endfor</l>
+<l>gen_cross_contour_xld (Cross, RCoordL, CCoordL, 6, 0)</l>
+<l>dev_display (Cross)</l>
+<l>String := 'Maximum measured error of the'</l>
+<l>String[1] := 'epipolar constraint: ' + EpipolarError$'.3f' + ' px'</l>
+<l>disp_message (WindowHandle1, String, 'window', 180, 12, 'white', 'false')</l>
+<l>get_cam_par_data (RectCamParR, 'image_width', ImageWidthR)</l>
+<l>get_cam_par_data (RectCamParR, 'image_height', ImageHeightR)</l>
+<l>dev_set_window (WindowHandle2)</l>
+<l>dev_set_color ('yellow')</l>
+<l>dev_clear_window ()</l>
+<l>dev_set_part (0, 0, ImageHeightR - 1, ImageWidthR - 1)</l>
+<l>dev_display (ImageRectifiedR)</l>
+<l>for Index := 6 to 49 by 7</l>
+<c>    * display the epipolar line of a certain point</c>
+<l>    gen_contour_polygon_xld (EpipolarLine, [round(RCoordL[Index]),round(RCoordL[Index])], [0,ImageWidthR - 1])</l>
+<l>    dev_display (EpipolarLine)</l>
+<l>endfor</l>
+<l>gen_cross_contour_xld (Cross, RCoordR, CCoordR, 6, 0)</l>
+<l>dev_display (Cross)</l>
+<l>return ()</l>
+</body>
+<docu id="check_epipolar_constraint">
+<parameters>
+<parameter id="CaltabFile"/>
+<parameter id="EpipolarError"/>
+<parameter id="ImageRectifiedL"/>
+<parameter id="ImageRectifiedR"/>
+<parameter id="RectCamParL"/>
+<parameter id="RectCamParR"/>
+<parameter id="WindowHandle1"/>
+<parameter id="WindowHandle2"/>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>

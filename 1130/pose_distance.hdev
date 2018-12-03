@@ -1,0 +1,403 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="18.11.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<c>* 这个程序演示了如何计算立体图像对中的点的世界坐标</c>
+<l>dev_update_off ()</l>
+<l>dev_close_window ()</l>
+<l>ImagePath := 'E:/Halcon/Images/1130/'</l>
+<c>*设置相机参数和相对位姿</c>
+<l>read_cam_par (ImagePath+'cam_left.dat', CamParamL)</l>
+<l>read_cam_par (ImagePath+'cam_right.dat', CamParamR)</l>
+<l>read_pose (ImagePath+'pos_righttoleft.dat', RelPose)</l>
+<c>*生成矫正后的Map</c>
+<l>gen_binocular_rectification_map (MapL, MapR, CamParamL, CamParamR, RelPose, 1, 'geometric', 'bilinear', RectCamParL, RectCamParR, CamPoseRectL, CamPoseRectR, RectLPosRectR)</l>
+<c>*设置窗口大小</c>
+<l>get_image_size (MapL, Width, Height)</l>
+<l>dev_open_window (0, 0, Width/4, Height/4, 'black', WindowHandle)</l>
+<l>set_display_font (WindowHandle, 16, 'mono', 'true', 'false')</l>
+<l>dev_set_line_width (2)</l>
+<c>* </c>
+<c>* Display a short description</c>
+<l>Message := 'This program demonstrates how to compute the'</l>
+<l>Message[1] := 'world coordinates of points in a stereo'</l>
+<l>Message[2] := 'image pair. Therefore the 3D coordinates'</l>
+<l>Message[3] := 'of the points in the camera coordinate system'</l>
+<l>Message[4] := 'are determined and then transformed into a'</l>
+<l>Message[5] := 'world coordinate system.'</l>
+<l>disp_message (WindowHandle, Message, 'window', 12, 12, 'black', 'true')</l>
+<l>disp_continue_message (WindowHandle, 'black', 'true')</l>
+<l>stop ()</l>
+<c>* </c>
+<c>* Open new window to display information</c>
+<l>dev_open_window (0, Width/4, 400, 300, 'black', InfoWindow)</l>
+<l>set_display_font (InfoWindow, 16, 'mono', 'true', 'false')</l>
+<l>dev_set_window (WindowHandle)</l>
+<c>*创建和初始化一个校准数据模型，用于纠正的立体图像。</c>
+<l>create_calib_data ('calibration_object', 2, 1, CalibDataID)</l>
+<l>set_calib_data_cam_param (CalibDataID, 0, [], RectCamParL)</l>
+<l>set_calib_data_cam_param (CalibDataID, 1, [], RectCamParR)</l>
+<l>set_calib_data_calib_object (CalibDataID, 0, 'E:/Halcon/Images/caltab160.descr')</l>
+<l>    read_image (ImageL, ImagePath + 'calib/left/image_01')</l>
+<l>    read_image (ImageR, ImagePath + 'calib/right/image_01')</l>
+<c>    *显示矫正后的图像</c>
+<l>    map_image (ImageL, MapL, ImageRectifiedL)</l>
+<l>    map_image (ImageR, MapR, ImageRectifiedR)</l>
+<c>    *找到标定板及标定点和标定板的位姿</c>
+<l>    find_calib_object (ImageRectifiedL, CalibDataID, 0, 0, 0, [], [])</l>
+<l>    find_calib_object (ImageRectifiedR, CalibDataID, 1, 0, 0, [], [])</l>
+<l>    get_calib_data_observ_points (CalibDataID, 0, 0, 0, RCoordL, CCoordL, IndexLnew, PoseL)</l>
+<l>    get_calib_data_observ_points (CalibDataID, 1, 0, 0, RCoordR, CCoordR, IndexRnew, PoseR)</l>
+<c>    *获得标定板区域</c>
+<l>    get_calib_data_observ_contours (ContoursL, CalibDataID, 'caltab', 0, 0, 0)</l>
+<l>    gen_region_contour_xld (ContoursL, CaltabL, 'filled')</l>
+<l>    reduce_domain (ImageRectifiedL, CaltabL, ImageRectifiedLROI)</l>
+<c>    *确定校正后的图像对的视差和匹配分数。视差图像为图像图像的每个像素指定一个合适的图像匹配像素。</c>
+<l>    binocular_disparity (ImageRectifiedLROI, ImageRectifiedR, Disparity, Score, 'ncc', 31, 31, 0, -60, 20, 1, 0.2, 'none', 'interpolation')</l>
+<c>    *在摄像机坐标系CCS中将图像点转换为三维坐标的坐标</c>
+<l>    po4:= []</l>
+<l>    po5:= []</l>
+<l>    po6:= []</l>
+<l>    g1:=[]</l>
+<l>    f1:=[]</l>
+<l>    dian_1:= []</l>
+<l>    dian_2:= []</l>
+<l>    dian_3:= []</l>
+<l>    NumImages := 21</l>
+<l>for I := 1 to NumImages by 1</l>
+<l>    read_image (IL, ImagePath + 'robot/left/image_' + I$'02d')</l>
+<l>    read_image (IR, ImagePath + 'robot/right/image_' + I$'02d') </l>
+<l>    map_image (IL, MapL, ImagedL)</l>
+<l>    map_image (IR, MapR, ImagedR)</l>
+<l>    dev_display (ImagedL)</l>
+<l>    edges_sub_pix (ImagedL, Edges, 'canny',4, 30, 90)</l>
+<l>    select_shape_xld (Edges, Holes, [ 'area','circularity'], 'and', [1000,0.8], [4500,1.0])</l>
+<l>    sort_contours_xld (Holes, HolesL, 'upper_left', 'true', 'row')</l>
+<c>    * 提取圆的坐标及半径</c>
+<l>    smallest_circle_xld (HolesL, RowL, ColumnL, RadiusL)</l>
+<c>    </c>
+<l>*     rgb1_to_gray (ImagedL, GrayImageL)</l>
+<l>*     threshold (GrayImageL, Regions, 157, 255)</l>
+<l>*     connection (Regions, ConnectedRegions)</l>
+<l>*     select_shape (ConnectedRegions, SelectedRegions, [ 'area','circularity'], 'and', [2000,0.6], [4500,1.0])</l>
+<l>*     smallest_circle (SelectedRegions, RowL, ColumnL, RadiusL)</l>
+<c>    </c>
+<c>   </c>
+<l>*     stop()</l>
+<c>    </c>
+<l>    dev_display (ImagedR)</l>
+<l>    edges_sub_pix (ImagedR, Edges, 'canny',4, 30, 60)   </l>
+<l>    select_shape_xld (Edges, Holes, [ 'area','circularity'], 'and', [1000,0.7], [5500,1.0])</l>
+<l>    sort_contours_xld (Holes, HolesR, 'upper_left', 'true', 'row')</l>
+<c>    * 提取圆的坐标及半径</c>
+<l>    smallest_circle_xld (HolesR, RowR, ColumnR, RadiusR)</l>
+<c>    </c>
+<l>*     rgb1_to_gray (ImagedR, GrayImageR)</l>
+<l>*     threshold (GrayImageR, Regions, 129, 255)</l>
+<l>*     connection (Regions, ConnectedRegionsR)</l>
+<l>*     select_shape (ConnectedRegionsR, SelectedRegionsR, [ 'area','circularity'], 'and', [2000,0.6], [4500,1.0])</l>
+<l>*     smallest_circle (SelectedRegionsR, RowR, ColumnR, RadiusR)</l>
+<l>*     stop()</l>
+<c>    </c>
+<c>    *获取图像点的灰度值，计算三维坐标</c>
+<l>    get_grayval (Disparity, RowL, ColumnL, DisparityOfSelectedPoints)</l>
+<c>    * Get the distance of the marked points to the camera system</c>
+<c>    *获取标记点到摄像机系统的距离</c>
+<l>    disparity_to_distance (RectCamParL, RectCamParR, RectLPosRectR, DisparityOfSelectedPoints, DistanceOfPoints)</l>
+<c>    * Method 1: Disparity to point 视差到点</c>
+<l>    disparity_to_point_3d (RectCamParL, RectCamParR, RectLPosRectR, RowL, ColumnL, DisparityOfSelectedPoints, X_CCS_FromDisparity, Y_CCS_FromDisparity, Z_CCS_FromDisparity)</l>
+<c>    * Method 2: Intersect lines of sight 相交线的视线</c>
+<c>    *</c>
+<c>    *鞍点</c>
+<c>    *在双目摄像系统中，从两线的交点处得到一个三维点。</c>
+<l>    intersect_lines_of_sight (RectCamParL, RectCamParR, RectLPosRectR, RowL, ColumnL, RowR, ColumnR, X_CCS_FromIntersectA, Y_CCS_FromIntersectA, Z_CCS_FromIntersectA, DistA)</l>
+<c>    *计算将坐标转换为世界坐标所需的齐次变换矩阵。  </c>
+<c>    *将左相机标定板位姿变成齐次矩阵</c>
+<l>    pose_to_hom_mat3d (PoseL, HomMat3D_WCS_to_RectCCS)</l>
+<c>    *矩阵求逆</c>
+<l>    hom_mat3d_invert (HomMat3D_WCS_to_RectCCS, HomMat3D_RectCCS_to_WCS)</l>
+<l>    affine_trans_point_3d (HomMat3D_RectCCS_to_WCS, X_CCS_FromIntersectA, Y_CCS_FromIntersectA, Z_CCS_FromIntersectA, X_WCSA, Y_WCSA, Z_WCSA)</l>
+<c>    *</c>
+<c>    *器械坐标系点</c>
+<c>    *在双目摄像系统中，从两线的交点处得到一个三维点。</c>
+<l>    intersect_lines_of_sight (RectCamParL, RectCamParR, RectLPosRectR, RowL, ColumnL, RowR, ColumnR, X_CCS_FromIntersect, Y_CCS_FromIntersect, Z_CCS_FromIntersect, Dist)</l>
+<l>    affine_trans_point_3d (HomMat3D_RectCCS_to_WCS, X_CCS_FromIntersect, Y_CCS_FromIntersect, Z_CCS_FromIntersect, X_WCS, Y_WCS, Z_WCS)</l>
+<l>*stop()    </l>
+<c>  </c>
+<c>** 1 计算并记录各个标志点两两之间距离，距离按从小到大排序。</c>
+<l>Tx_distance_of_dian ( X_WCS, Y_WCS, Z_WCS, d1, d2, d3, P1, P2, P3)</l>
+<c></c>
+<c>        *把标志点之间的距离存入数组</c>
+<l>            po4:= [po4,d1]</l>
+<l>            po5:= [po5,d2]</l>
+<l>            po6:= [po6,d3]</l>
+<l>*stop()</l>
+<c></c>
+<c>        *求平移向量Ttl</c>
+<l>        t12:=P1-P2</l>
+<l>        t32:=P3-P2 </l>
+<l>        t12_32:=sum(t12*t32)</l>
+<l>        t32_32:=sum(t32*t32)</l>
+<l>        Ttl:=P2+t12_32/t32_32*t32</l>
+<c>        *求旋转矩阵Rtl</c>
+<l>        R1:=[]</l>
+<l>        P_T:=P1-Ttl</l>
+<l>        P_T_m:=sqrt(P_T[0]*P_T[0]+P_T[1]*P_T[1]+P_T[2]*P_T[2])</l>
+<l>        ny:=P_T/P_T_m</l>
+<l>        nx:=t32/sqrt(t32_32)</l>
+<l>        nz:=[]</l>
+<l>        nz:=[nx[1]*ny[2]-nx[2]*ny[1],nx[2]*ny[0]-nx[0]*ny[2],nx[0]*ny[1]-nx[1]*ny[0]]</l>
+<l>        R1:=[nx,ny,nz]</l>
+<l>        create_matrix (3, 3, 0,R2)</l>
+<l>        set_full_matrix (R2, R1) </l>
+<l>        transpose_matrix (R2, Rtl)</l>
+<c>        *器械坐标系到世界坐标系的转换矩阵M</c>
+<c>        </c>
+<l>        M1:=[]</l>
+<l>        M1:=[nx,ny,nz,Ttl]</l>
+<l>        create_matrix (4, 3, 0,M2)</l>
+<l>        set_full_matrix (M2, M1) </l>
+<l>        transpose_matrix (M2, M)</l>
+<l>        get_full_matrix (M, Q_to_WCS)</l>
+<c>        *世in相X物in世=物in相</c>
+<l>        hom_mat3d_compose ( HomMat3D_WCS_to_RectCCS, Q_to_WCS, Q_to_CCS)</l>
+<l>        hom_mat3d_to_pose (Q_to_CCS, Pose)</l>
+<l>        dev_display (ImagedL)</l>
+<l>        disp_3d_coord_system (WindowHandle, RectCamParL, Pose, 0.12)</l>
+<l>*         write_pose (Pose, ImagePath+'robot/GinC_'+ I$'02d'+'.dat')</l>
+<l>  stop()      </l>
+<l>endfor</l>
+<l>stop()</l>
+<c>** 1 求根据固定的工作点三维坐标Ptp，求一次测量时器械坐标系下工作点的相对坐标Pttp_j</c>
+<l>        invert_matrix (Rtl, 'general', 0, Rtl_inv)</l>
+<l>        Ptp:=[X_WCSA,Y_WCSA,Z_WCSA]</l>
+<l>        yt:=Ptp-Ttl</l>
+<l>        create_matrix (3, 1, 0, P_T)</l>
+<l>        set_full_matrix (P_T, yt)</l>
+<l>        mult_matrix (Rtl_inv, P_T, 'AB', Pttp_j)</l>
+<l>        get_full_matrix (Rtl, V1)</l>
+<l>        g1:=[g1,V1]</l>
+<l>        f1:=[f1,yt]</l>
+<c> </c>
+<l>*stop()</l>
+<c></c>
+<c>** 2 根据器械坐标系工作点的相对坐标Pttp，求一次测量时的工作点在世界坐标系下的三维坐标Ptp_j        </c>
+<l>        Pttp_1:=[0.0215006,-0.0349936,-0.00941331]</l>
+<l>        create_matrix (3, 1, 0, Pttp)</l>
+<l>        set_full_matrix (Pttp, Pttp_1)</l>
+<l>        mult_matrix (Rtl, Pttp, 'AB', rp)</l>
+<l>        get_full_matrix (rp, rpp)</l>
+<l>        Ptp_j:=rpp+Ttl</l>
+<l>affine_trans_point_3d (Q_to_WCS, 0.0215006,-0.0349936,-0.00941331, X_Ptp_j, Y_Ptp_j, Z_Ptp_j)</l>
+<c></c>
+<c>*显示在相机坐标系下的工作点</c>
+<l>affine_trans_point_3d (Q_to_CCS, 0.0215006,-0.0349936,-0.00941331, X_Ptp_j, Y_Ptp_j, Z_Ptp_j)</l>
+<l>project_3d_point (X_Ptp_j, Y_Ptp_j, Z_Ptp_j, RectCamParL, Row, Column)</l>
+<l>gen_cross_contour_xld (GC, Row, Column, 36, 0.185398)</l>
+<l>dev_display (ImagedL)</l>
+<l>disp_3d_coord_system (WindowHandle, RectCamParL, Pose, 0.16)</l>
+<l>dev_display (GC)</l>
+<c></c>
+<c></c>
+<l>stop()</l>
+<c></c>
+<l>stop()</l>
+<l>stop()</l>
+<l>stop()    </l>
+<c>  </c>
+<c>** 1 求矩阵G、F</c>
+<l>    create_matrix (27, 3, 0, G2)</l>
+<l>    set_full_matrix (G2, g1)</l>
+<l>    create_matrix (27, 1, 0, F2)</l>
+<l>    set_full_matrix (F2, f1)</l>
+<c>    *最小二乘法求器械坐标系工作点的相对坐标Pttp    </c>
+<l>    mult_matrix (G2, G2, 'ATB', GTG)</l>
+<l>    invert_matrix (GTG, 'general', 0, GTG_inv) </l>
+<l>    mult_matrix (G2, F2, 'ATB', GTF)</l>
+<l>    mult_matrix (GTG_inv, GTF, 'AB', Pttp)</l>
+<c></c>
+<l>stop()</l>
+<c></c>
+<c>** 1 对同一对标志点的距离求平均值并记录</c>
+<l>    l1:=sqrt(po4)</l>
+<l>    l2:=sqrt(po5)</l>
+<l>    l3:=sqrt(po6)</l>
+<l>    tuple_mean (l1, Mean1)</l>
+<l>    tuple_mean (l2, Mean2)</l>
+<l>    tuple_mean (l3, Mean3)</l>
+<c></c>
+<l>    stop()    </l>
+<c>    *保存坐标</c>
+<l>    create_matrix (9, 1, 0, MatrixID1)</l>
+<l>    set_full_matrix (MatrixID1, po4) </l>
+<l>    create_matrix (9, 1, 0, MatrixID2)</l>
+<l>    set_full_matrix (MatrixID2, po5)</l>
+<l>    create_matrix (9, 1, 0, MatrixID3)</l>
+<l>    set_full_matrix (MatrixID3, po6)</l>
+<l>    *write_matrix (MatrixID1, 'ascii',ImagePath + 'L1p' + '.txt')</l>
+<l>    *write_matrix (MatrixID2, 'ascii',ImagePath + 'L2p' + '.txt')</l>
+<l>    *write_matrix (MatrixID3, 'ascii',ImagePath + 'L3p' + '.txt')</l>
+<c></c>
+<c>    * </c>
+<c>    * Display the results</c>
+<c>    * -------------------</c>
+<l>    dev_clear_window ()</l>
+<l>    dev_display (ImagedL)</l>
+<l>    dev_display (HolesL)</l>
+<l>    disp_message (WindowHandle, 'Image ' + (I) + ' of 21', 'window', 12, 12, 'black', 'true')</l>
+<c>    * </c>
+<c>    * Invert the homogeneous transformation matrix and convert</c>
+<c>    * it into a 3D pose for the 3D coordinate system.</c>
+<l>    hom_mat3d_invert (HomMat3D_RectCCS_to_WCS, HomMat3D_WCS_to_RectCCS)</l>
+<l>    hom_mat3d_to_pose (HomMat3D_WCS_to_RectCCS, Pose)</l>
+<c>    * </c>
+<c>    * Display the 3D coordinate system</c>
+<l>    set_rgb (WindowHandle, [255,0,0], [0,255,0], [0,0,255])</l>
+<l>    disp_3d_coord_system (WindowHandle, RectCamParL, Pose, 0.06)</l>
+<l>    disp_results (WindowHandle, InfoWindow, RowL, ColumnL, DistanceOfPoints, X_CCS_FromIntersect, Y_CCS_FromIntersect, Z_CCS_FromIntersect, X_WCS, Y_WCS, Z_WCS)</l>
+<c>    * </c>
+<c>    * Display continue message</c>
+<l>    if (Index &lt; 18)</l>
+<l>        set_display_font (WindowHandle, 16, 'mono', 'true', 'false')</l>
+<l>        disp_continue_message (WindowHandle, 'black', 'true')</l>
+<l>        stop ()</l>
+<l>        dev_set_window (InfoWindow)</l>
+<l>        dev_clear_window ()</l>
+<l>        dev_set_window (WindowHandle)</l>
+<l>    endif</l>
+<l>endfor</l>
+<l>clear_calib_data (CalibDataID)</l>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+<procedure name="gen_hom_mat3d_from_three_points">
+<interface>
+<ic>
+<par name="Origin" base_type="ctrl" dimension="0"/>
+<par name="PointOnXAxis" base_type="ctrl" dimension="0"/>
+<par name="PointInXYPlane" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="HomMat3d" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>XAxis := [PointOnXAxis[0] - Origin[0],PointOnXAxis[1] - Origin[1],PointOnXAxis[2] - Origin[2]]</l>
+<l>XAxisNorm := XAxis / sqrt(sum(XAxis * XAxis))</l>
+<l>VectorInXYPlane := [PointInXYPlane[0] - Origin[0],PointInXYPlane[1] - Origin[1],PointInXYPlane[2] - Origin[2]]</l>
+<l>cross_product (XAxisNorm, VectorInXYPlane, ZAxis)</l>
+<l>ZAxisNorm := ZAxis / sqrt(sum(ZAxis * ZAxis))</l>
+<l>cross_product (ZAxisNorm, XAxisNorm, YAxisNorm)</l>
+<l>HomMat3d_WCS_to_RectCCS := [XAxisNorm[0],YAxisNorm[0],ZAxisNorm[0],Origin[0],XAxisNorm[1],YAxisNorm[1],ZAxisNorm[1],Origin[1],XAxisNorm[2],YAxisNorm[2],ZAxisNorm[2],Origin[2]]</l>
+<l>hom_mat3d_invert (HomMat3d_WCS_to_RectCCS, HomMat3d)</l>
+<l>return ()</l>
+</body>
+<docu id="gen_hom_mat3d_from_three_points">
+<short lang="en_US">Determines the 3d transformation matrix from the origin and two points on the x and y axes, respectively</short>
+<parameters>
+<parameter id="HomMat3d"/>
+<parameter id="Origin"/>
+<parameter id="PointInXYPlane"/>
+<parameter id="PointOnXAxis"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="cross_product">
+<interface>
+<ic>
+<par name="V1" base_type="ctrl" dimension="0"/>
+<par name="V2" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="CrossProduct" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>CrossProduct := [V1[1] * V2[2] - V1[2] * V2[1],V1[2] * V2[0] - V1[0] * V2[2],V1[0] * V2[1] - V1[1] * V2[0]]</l>
+<l>return ()</l>
+</body>
+<docu id="cross_product">
+<short lang="en_US">Calculates the cross product of the two vectors given in V1 and V2</short>
+<parameters>
+<parameter id="CrossProduct"/>
+<parameter id="V1"/>
+<parameter id="V2"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="disp_results">
+<interface>
+<ic>
+<par name="WindowHandle" base_type="ctrl" dimension="0"/>
+<par name="InfoWindow" base_type="ctrl" dimension="0"/>
+<par name="RowL" base_type="ctrl" dimension="0"/>
+<par name="ColumnL" base_type="ctrl" dimension="0"/>
+<par name="DistanceOfPoints" base_type="ctrl" dimension="0"/>
+<par name="X_CCS_FromIntersect" base_type="ctrl" dimension="0"/>
+<par name="Y_CCS_FromIntersect" base_type="ctrl" dimension="0"/>
+<par name="Z_CCS_FromIntersect" base_type="ctrl" dimension="0"/>
+<par name="X_WCS" base_type="ctrl" dimension="0"/>
+<par name="Y_WCS" base_type="ctrl" dimension="0"/>
+<par name="Z_WCS" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* Display crosses at the marked point(s)</c>
+<l>gen_cross_contour_xld (Cross1, RowL[0], ColumnL[0], 15, 0)</l>
+<l>dev_set_color ('cyan')</l>
+<l>dev_display (Cross1)</l>
+<l>gen_cross_contour_xld (Cross2, RowL[1], ColumnL[1], 15, 0)</l>
+<l>dev_set_color ('magenta')</l>
+<l>dev_display (Cross2)</l>
+<l>disp_message (WindowHandle, 'P1', 'image', RowL[0], ColumnL[0], 'cyan', 'false')</l>
+<l>disp_message (WindowHandle, 'P2', 'image', RowL[1], ColumnL[1], 'magenta', 'false')</l>
+<c>* </c>
+<c>* Display the 3D coordinates of the marked points in</c>
+<c>* the CCS and the WCS</c>
+<l>disp_message (WindowHandle, '3D coordinates of marked points', 'window', 40, 12, 'black', 'true')</l>
+<l>set_display_font (WindowHandle, 14, 'mono', 'true', 'false')</l>
+<c>* </c>
+<c>* Display the 3D coordinates in the CCS (from intersect lines of sight)</c>
+<l>MessageP1 := sum('P1: (' + (1000 * X_CCS_FromIntersect[0])$'7.2f' + ',' + (1000 * Y_CCS_FromIntersect[0])$'6.2f' + ',' + (1000 * Z_CCS_FromIntersect[0])$'7.2f' + ' )\n')</l>
+<l>MessageP2 := sum('P2: (' + (1000 * X_CCS_FromIntersect[1])$'7.2f' + ',' + (1000 * Y_CCS_FromIntersect[1])$'6.2f' + ',' + (1000 * Z_CCS_FromIntersect[1])$'7.2f' + ' )\n')</l>
+<l>disp_message (InfoWindow, 'Camera coordinate system [mm]:', 'window', 12, 12, 'white', 'false')</l>
+<l>disp_message (InfoWindow, MessageP1, 'image', 40, 12, 'cyan', 'false')</l>
+<l>disp_message (InfoWindow, MessageP2, 'image', 60, 12, 'magenta', 'false')</l>
+<c>* </c>
+<c>* Display the 3D coordinates in the WCS</c>
+<l>MessageP1 := sum('P1: (' + (1000 * X_WCS[0])$'7.2f' + ',' + (1000 * Y_WCS[0])$'6.2f' + ',' + (1000 * Z_WCS[0])$'7.2f' + ' )')</l>
+<l>MessageP2 := sum('P2: (' + (1000 * X_WCS[1])$'7.2f' + ',' + (1000 * Y_WCS[1])$'6.2f' + ',' + (1000 * Z_WCS[1])$'7.2f' + ' )')</l>
+<l>disp_message (InfoWindow, 'World coordinate system [mm]:', 'image', 100, 12, 'white', 'false')</l>
+<l>disp_message (InfoWindow, MessageP1, 'image', 130, 12, 'cyan', 'false')</l>
+<l>disp_message (InfoWindow, MessageP2, 'image', 150, 12, 'magenta', 'false')</l>
+<c>* </c>
+<c>* Display the minimal and maximal distance of an object</c>
+<c>* point to the rectified camera system</c>
+<l>Message := 'Distances to the camera system:'</l>
+<l>disp_message (InfoWindow, Message, 'window', 200, 12, 'white', 'false')</l>
+<l>Color := ['cyan','magenta']</l>
+<l>Message := 'P1: ' + (DistanceOfPoints[0] * 1000)$'.2f' + ' mm'</l>
+<l>Message[1] := 'P2: ' + (DistanceOfPoints[1] * 1000)$'.2f' + ' mm'</l>
+<l>disp_message (InfoWindow, Message, 'window', 230, 12, Color, 'false')</l>
+<l>return ()</l>
+</body>
+<docu id="disp_results">
+<parameters>
+<parameter id="ColumnL"/>
+<parameter id="DistanceOfPoints"/>
+<parameter id="InfoWindow"/>
+<parameter id="RowL"/>
+<parameter id="WindowHandle"/>
+<parameter id="X_CCS_FromIntersect"/>
+<parameter id="X_WCS"/>
+<parameter id="Y_CCS_FromIntersect"/>
+<parameter id="Y_WCS"/>
+<parameter id="Z_CCS_FromIntersect"/>
+<parameter id="Z_WCS"/>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>

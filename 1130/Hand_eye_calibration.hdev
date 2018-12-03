@@ -1,0 +1,387 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="18.11.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<c>* 1、设置文件路径</c>
+<l>ImgPath := 'E:/Halcon/Images/1130/'</l>
+<l>ImgPath_R := 'E:/Halcon/Images/1130/robot/'</l>
+<l>DataNameStart := 'E:/Halcon/Images/1130/robot/image_'</l>
+<c>* Read image</c>
+<c>* 2、读取图像</c>
+<l>read_image (Image, ImgPath_R +'left/image_'+ '01')</l>
+<l>get_image_size (Image, Width, Height)</l>
+<c>* Open window</c>
+<c>* 3、设置窗口，显示图像</c>
+<l>dev_close_window ()</l>
+<l>dev_open_window (0, 0, Width/3, Height/3, 'black', WindowHandle1)</l>
+<l>dev_set_line_width (2)</l>
+<l>dev_set_draw ('margin')</l>
+<l>*dev_set_color ('green')</l>
+<l>dev_display (Image)</l>
+<l>SizeGauss := 3</l>
+<l>MarkThresh := 60</l>
+<l>MinDiamMarks := 2</l>
+<l>StartThresh := 100</l>
+<l>DeltaThresh := 10</l>
+<l>MinThresh := 10</l>
+<l>Alpha := 0.9</l>
+<l>MinContLength := 15</l>
+<l>MaxDiamMarks := 100</l>
+<l>a:=[]</l>
+<l>b:=[]</l>
+<l>a1:=[]</l>
+<l>b1:=[]</l>
+<l>b2:=[]</l>
+<l>NumImages := 11</l>
+<l>set_display_font (WindowHandle1, 14, 'mono', 'true', 'false')</l>
+<l>read_cam_par (ImgPath + 'cam_left.dat', StartCamParamL)</l>
+<l>read_cam_par (ImgPath + 'cam_right.dat', StartCamParamR)</l>
+<l>read_pose (ImgPath +'pos_right2left.dat',cLPcR)</l>
+<l>gen_binocular_rectification_map (Map1, Map2, StartCamParamL, StartCamParamR, cLPcR, 1, 'geometric', 'bilinear', StartCamParam, CamParamRect2, CamPoseRect1, CamPoseRect2, RelPoseRect)</l>
+<l>CaltabFile := 'E:/Halcon/Images/caltab160.descr'</l>
+<l>caltab_points (CaltabFile, X, Y, Z)</l>
+<l>stop()</l>
+<c></c>
+<l>for I := 1 to NumImages by 1 </l>
+<l>read_pose (ImgPath_R + 'GinC_'+ I$'02d'+'.dat', GinC0)</l>
+<l>pose_invert (GinC0, CinG0)</l>
+<l>read_pose (DataNameStart + I$'02d'+'.dat', ToolInBasePose0)</l>
+<l>pose_invert (ToolInBasePose0, BinTool0)</l>
+<c></c>
+<l>for Index := 1 to I-1 by 1</l>
+<l>    read_image (IL, ImgPath_R + 'left/image_' + Index$'02d')</l>
+<l>    map_image (IL, Map1,ImageL)</l>
+<l>*     find_caltab (ImageL, CaltabL, CaltabFile, SizeGauss, MarkThresh, MinDiamMarks)</l>
+<l>    dev_display (ImageL)</l>
+<l>*     find_marks_and_pose (ImageL, CaltabL, CaltabFile, StartCamParam, StartThresh, DeltaThresh, MinThresh, Alpha, MinContLength, MaxDiamMarks, RCoordL, CCoordL, GinC)</l>
+<l>    *disp_caltab (WindowHandle1, CaltabFile, StartCamParam, GinC, 1)</l>
+<l>    read_pose (ImgPath_R + 'GinC_'+ Index$'02d'+'.dat', GinC)</l>
+<l>    disp_3d_coord_system (WindowHandle1, StartCamParam, GinC, 0.06)</l>
+<l>    pose_compose (CinG0, GinC, GinG0)</l>
+<l>    pose_to_hom_mat3d (GinG0, D)</l>
+<l>    hom_mat3d_to_pose (D, P4)</l>
+<l>    read_pose (DataNameStart + Index$'02d' + '.dat', ToolInBasePose)</l>
+<l>    pose_compose (BinTool0, ToolInBasePose, ToolinTool0)</l>
+<l>    pose_to_hom_mat3d (ToolinTool0, C)</l>
+<l>    hom_mat3d_to_pose (C, P3)</l>
+<l>    tuple_fmod (P3[3]+1,360, ee1)</l>
+<l>    tuple_fmod (P3[4]+1,360, ee2)</l>
+<l>    tuple_fmod (P3[5]+1,360, ee3)</l>
+<l>*     stop()</l>
+<l>if(abs(ee1-1)&gt;0.1)</l>
+<l>    a:=[a, C[0]-D[0], C[1], C[2], -D[4], 0, 0, -D[8], 0, 0, 0, 0, 0, -D[1], 0, 0, C[0]-D[5], C[1], C[2], -D[9], 0, 0, 0, 0, 0, -D[2], 0, 0, -D[6], 0, 0, C[0]-D[10], C[1], C[2], 0, 0, 0]</l>
+<l>    a:=[a, C[4], C[5]-D[0], C[6], 0, -D[4], 0, 0, -D[8], 0, 0, 0, 0, 0, -D[1], 0, C[4], C[5]-D[5], C[6], 0, -D[9], 0, 0, 0, 0, 0, -D[2], 0, 0, -D[6], 0, C[4], C[5]-D[10], C[6], 0, 0, 0]</l>
+<l>    a:=[a, C[8], C[9], C[10]-D[0], 0, 0, -D[4], 0, 0, -D[8], 0, 0, 0, 0, 0, -D[1], C[8], C[9], C[10]-D[5], 0, 0, -D[9], 0, 0, 0, 0, 0, -D[2], 0, 0, -D[6], C[8], C[9], C[10]-D[10], 0, 0, 0]</l>
+<c>    </c>
+<l>    a:=[a, D[3], 0, 0, D[7], 0, 0, D[11], 0, 0, 1-C[0], -C[1], -C[2]]</l>
+<l>    a:=[a, 0, D[3], 0, 0, D[7], 0, 0, D[11], 0, -C[4], 1-C[5], -C[6]]</l>
+<l>    a:=[a, 0, 0, D[3], 0, 0, D[7], 0, 0, D[11], -C[8], -C[9], 1-C[10]]</l>
+<c>    </c>
+<l>    b:=[b, 0, 0, 0, 0, 0, 0, 0, 0, 0, C[3], C[7], C[11]]</l>
+<c>    </c>
+<l>    a1:=[a1, 1-C[0], -C[1], -C[2], -C[4], 1-C[5], -C[6], -C[8], -C[9], 1-C[10]]</l>
+<l>    b1:=[b1, C[3], C[7], C[11]]</l>
+<l>    b2:=[b2, D[3], D[7], D[11]]</l>
+<l>elseif(abs(ee2-1)&gt;0.1)</l>
+<l>    a:=[a, C[0]-D[0], C[1], C[2], -D[4], 0, 0, -D[8], 0, 0, 0, 0, 0, -D[1], 0, 0, C[0]-D[5], C[1], C[2], -D[9], 0, 0, 0, 0, 0, -D[2], 0, 0, -D[6], 0, 0, C[0]-D[10], C[1], C[2], 0, 0, 0]</l>
+<l>    a:=[a, C[4], C[5]-D[0], C[6], 0, -D[4], 0, 0, -D[8], 0, 0, 0, 0, 0, -D[1], 0, C[4], C[5]-D[5], C[6], 0, -D[9], 0, 0, 0, 0, 0, -D[2], 0, 0, -D[6], 0, C[4], C[5]-D[10], C[6], 0, 0, 0]</l>
+<l>    a:=[a, C[8], C[9], C[10]-D[0], 0, 0, -D[4], 0, 0, -D[8], 0, 0, 0, 0, 0, -D[1], C[8], C[9], C[10]-D[5], 0, 0, -D[9], 0, 0, 0, 0, 0, -D[2], 0, 0, -D[6], C[8], C[9], C[10]-D[10], 0, 0, 0]</l>
+<c>    </c>
+<l>    a:=[a, D[3], 0, 0, D[7], 0, 0, D[11], 0, 0, 1-C[0], -C[1], -C[2]]</l>
+<l>    a:=[a, 0, D[3], 0, 0, D[7], 0, 0, D[11], 0, -C[4], 1-C[5], -C[6]]</l>
+<l>    a:=[a, 0, 0, D[3], 0, 0, D[7], 0, 0, D[11], -C[8], -C[9], 1-C[10]]</l>
+<c>    </c>
+<l>    b:=[b, 0, 0, 0, 0, 0, 0, 0, 0, 0, C[3], C[7], C[11]]</l>
+<c>    </c>
+<l>    a1:=[a1, 1-C[0], -C[1], -C[2], -C[4], 1-C[5], -C[6], -C[8], -C[9], 1-C[10]]</l>
+<l>    b1:=[b1, C[3], C[7], C[11]]</l>
+<l>    b2:=[b2, D[3], D[7], D[11]]</l>
+<l>elseif(abs(ee3-1)&gt;0.1)</l>
+<l>    a:=[a, C[0]-D[0], C[1], C[2], -D[4], 0, 0, -D[8], 0, 0, 0, 0, 0, -D[1], 0, 0, C[0]-D[5], C[1], C[2], -D[9], 0, 0, 0, 0, 0, -D[2], 0, 0, -D[6], 0, 0, C[0]-D[10], C[1], C[2], 0, 0, 0]</l>
+<l>    a:=[a, C[4], C[5]-D[0], C[6], 0, -D[4], 0, 0, -D[8], 0, 0, 0, 0, 0, -D[1], 0, C[4], C[5]-D[5], C[6], 0, -D[9], 0, 0, 0, 0, 0, -D[2], 0, 0, -D[6], 0, C[4], C[5]-D[10], C[6], 0, 0, 0]</l>
+<l>    a:=[a, C[8], C[9], C[10]-D[0], 0, 0, -D[4], 0, 0, -D[8], 0, 0, 0, 0, 0, -D[1], C[8], C[9], C[10]-D[5], 0, 0, -D[9], 0, 0, 0, 0, 0, -D[2], 0, 0, -D[6], C[8], C[9], C[10]-D[10], 0, 0, 0]</l>
+<c>    </c>
+<l>    a:=[a, D[3], 0, 0, D[7], 0, 0, D[11], 0, 0, 1-C[0], -C[1], -C[2]]</l>
+<l>    a:=[a, 0, D[3], 0, 0, D[7], 0, 0, D[11], 0, -C[4], 1-C[5], -C[6]]</l>
+<l>    a:=[a, 0, 0, D[3], 0, 0, D[7], 0, 0, D[11], -C[8], -C[9], 1-C[10]]</l>
+<c>    </c>
+<l>    b:=[b, 0, 0, 0, 0, 0, 0, 0, 0, 0, C[3], C[7], C[11]]</l>
+<c>    </c>
+<l>    a1:=[a1, 1-C[0], -C[1], -C[2], -C[4], 1-C[5], -C[6], -C[8], -C[9], 1-C[10]]</l>
+<l>    b1:=[b1, C[3], C[7], C[11]]</l>
+<l>    b2:=[b2, D[3], D[7], D[11]]</l>
+<c>    </c>
+<l>endif   </l>
+<c>    *误差</c>
+<l>*     read_pose (ImgPath + 'me_GInTool_z.dat', X1)</l>
+<l>*     hom_mat3d_to_pose (C, CC)</l>
+<l>*     pose_compose (CC, X1, CX)</l>
+<l>*     hom_mat3d_to_pose (D, DD)</l>
+<l>*     pose_compose (X1, DD, XD)</l>
+<l>*     wucha:=CX-XD</l>
+<l>*     wucha[0]:=wucha[0]*1000</l>
+<l>*     wucha[1]:=wucha[1]*1000</l>
+<l>*     wucha[2]:=wucha[2]*1000</l>
+<c>   </c>
+<l>endfor</l>
+<l>for Index := I+1 to NumImages by 1</l>
+<l>    read_image (IL, ImgPath_R + 'left/image_' + Index$'02d')</l>
+<l>    map_image (IL, Map1,ImageL)</l>
+<l>*     find_caltab (ImageL, CaltabL, CaltabFile, SizeGauss, MarkThresh, MinDiamMarks)</l>
+<l>    dev_display (ImageL)</l>
+<l>*     find_marks_and_pose (ImageL, CaltabL, CaltabFile, StartCamParam, StartThresh, DeltaThresh, MinThresh, Alpha, MinContLength, MaxDiamMarks, RCoordL, CCoordL, GinC)</l>
+<l>    *disp_caltab (WindowHandle1, CaltabFile, StartCamParam, GinC, 1)</l>
+<l>    read_pose (ImgPath_R + 'GinC_'+ Index$'02d'+'.dat', GinC)</l>
+<l>    disp_3d_coord_system (WindowHandle1, StartCamParam, GinC, 0.06)</l>
+<l>    pose_compose (CinG0, GinC, GinG0)</l>
+<l>    pose_to_hom_mat3d (GinG0, D)</l>
+<l>    hom_mat3d_to_pose (D, P4)</l>
+<l>    read_pose (DataNameStart + Index$'02d' + '.dat', ToolInBasePose)</l>
+<l>    pose_compose (BinTool0, ToolInBasePose, ToolinTool0)</l>
+<l>    pose_to_hom_mat3d (ToolinTool0, C)</l>
+<l>    hom_mat3d_to_pose (C, P3)</l>
+<l>    tuple_fmod (P3[3]+1,360, ee1)</l>
+<l>    tuple_fmod (P3[4]+1,360, ee2)</l>
+<l>    tuple_fmod (P3[5]+1,360, ee3)</l>
+<l>*     stop()</l>
+<l>if(abs(ee1-1)&gt;0.1)</l>
+<l>    a:=[a, C[0]-D[0], C[1], C[2], -D[4], 0, 0, -D[8], 0, 0, 0, 0, 0, -D[1], 0, 0, C[0]-D[5], C[1], C[2], -D[9], 0, 0, 0, 0, 0, -D[2], 0, 0, -D[6], 0, 0, C[0]-D[10], C[1], C[2], 0, 0, 0]</l>
+<l>    a:=[a, C[4], C[5]-D[0], C[6], 0, -D[4], 0, 0, -D[8], 0, 0, 0, 0, 0, -D[1], 0, C[4], C[5]-D[5], C[6], 0, -D[9], 0, 0, 0, 0, 0, -D[2], 0, 0, -D[6], 0, C[4], C[5]-D[10], C[6], 0, 0, 0]</l>
+<l>    a:=[a, C[8], C[9], C[10]-D[0], 0, 0, -D[4], 0, 0, -D[8], 0, 0, 0, 0, 0, -D[1], C[8], C[9], C[10]-D[5], 0, 0, -D[9], 0, 0, 0, 0, 0, -D[2], 0, 0, -D[6], C[8], C[9], C[10]-D[10], 0, 0, 0]</l>
+<c>    </c>
+<l>    a:=[a, D[3], 0, 0, D[7], 0, 0, D[11], 0, 0, 1-C[0], -C[1], -C[2]]</l>
+<l>    a:=[a, 0, D[3], 0, 0, D[7], 0, 0, D[11], 0, -C[4], 1-C[5], -C[6]]</l>
+<l>    a:=[a, 0, 0, D[3], 0, 0, D[7], 0, 0, D[11], -C[8], -C[9], 1-C[10]]</l>
+<c>    </c>
+<l>    b:=[b, 0, 0, 0, 0, 0, 0, 0, 0, 0, C[3], C[7], C[11]]</l>
+<c>    </c>
+<l>    a1:=[a1, 1-C[0], -C[1], -C[2], -C[4], 1-C[5], -C[6], -C[8], -C[9], 1-C[10]]</l>
+<l>    b1:=[b1, C[3], C[7], C[11]]</l>
+<l>    b2:=[b2, D[3], D[7], D[11]]</l>
+<l>elseif(abs(ee2-1)&gt;0.1)</l>
+<l>    a:=[a, C[0]-D[0], C[1], C[2], -D[4], 0, 0, -D[8], 0, 0, 0, 0, 0, -D[1], 0, 0, C[0]-D[5], C[1], C[2], -D[9], 0, 0, 0, 0, 0, -D[2], 0, 0, -D[6], 0, 0, C[0]-D[10], C[1], C[2], 0, 0, 0]</l>
+<l>    a:=[a, C[4], C[5]-D[0], C[6], 0, -D[4], 0, 0, -D[8], 0, 0, 0, 0, 0, -D[1], 0, C[4], C[5]-D[5], C[6], 0, -D[9], 0, 0, 0, 0, 0, -D[2], 0, 0, -D[6], 0, C[4], C[5]-D[10], C[6], 0, 0, 0]</l>
+<l>    a:=[a, C[8], C[9], C[10]-D[0], 0, 0, -D[4], 0, 0, -D[8], 0, 0, 0, 0, 0, -D[1], C[8], C[9], C[10]-D[5], 0, 0, -D[9], 0, 0, 0, 0, 0, -D[2], 0, 0, -D[6], C[8], C[9], C[10]-D[10], 0, 0, 0]</l>
+<c>    </c>
+<l>    a:=[a, D[3], 0, 0, D[7], 0, 0, D[11], 0, 0, 1-C[0], -C[1], -C[2]]</l>
+<l>    a:=[a, 0, D[3], 0, 0, D[7], 0, 0, D[11], 0, -C[4], 1-C[5], -C[6]]</l>
+<l>    a:=[a, 0, 0, D[3], 0, 0, D[7], 0, 0, D[11], -C[8], -C[9], 1-C[10]]</l>
+<c>    </c>
+<l>    b:=[b, 0, 0, 0, 0, 0, 0, 0, 0, 0, C[3], C[7], C[11]]</l>
+<c>    </c>
+<l>    a1:=[a1, 1-C[0], -C[1], -C[2], -C[4], 1-C[5], -C[6], -C[8], -C[9], 1-C[10]]</l>
+<l>    b1:=[b1, C[3], C[7], C[11]]</l>
+<l>    b2:=[b2, D[3], D[7], D[11]]</l>
+<l>elseif(abs(ee3-1)&gt;0.1)</l>
+<l>    a:=[a, C[0]-D[0], C[1], C[2], -D[4], 0, 0, -D[8], 0, 0, 0, 0, 0, -D[1], 0, 0, C[0]-D[5], C[1], C[2], -D[9], 0, 0, 0, 0, 0, -D[2], 0, 0, -D[6], 0, 0, C[0]-D[10], C[1], C[2], 0, 0, 0]</l>
+<l>    a:=[a, C[4], C[5]-D[0], C[6], 0, -D[4], 0, 0, -D[8], 0, 0, 0, 0, 0, -D[1], 0, C[4], C[5]-D[5], C[6], 0, -D[9], 0, 0, 0, 0, 0, -D[2], 0, 0, -D[6], 0, C[4], C[5]-D[10], C[6], 0, 0, 0]</l>
+<l>    a:=[a, C[8], C[9], C[10]-D[0], 0, 0, -D[4], 0, 0, -D[8], 0, 0, 0, 0, 0, -D[1], C[8], C[9], C[10]-D[5], 0, 0, -D[9], 0, 0, 0, 0, 0, -D[2], 0, 0, -D[6], C[8], C[9], C[10]-D[10], 0, 0, 0]</l>
+<c>    </c>
+<l>    a:=[a, D[3], 0, 0, D[7], 0, 0, D[11], 0, 0, 1-C[0], -C[1], -C[2]]</l>
+<l>    a:=[a, 0, D[3], 0, 0, D[7], 0, 0, D[11], 0, -C[4], 1-C[5], -C[6]]</l>
+<l>    a:=[a, 0, 0, D[3], 0, 0, D[7], 0, 0, D[11], -C[8], -C[9], 1-C[10]]</l>
+<c>    </c>
+<l>    b:=[b, 0, 0, 0, 0, 0, 0, 0, 0, 0, C[3], C[7], C[11]]</l>
+<c>    </c>
+<l>    a1:=[a1, 1-C[0], -C[1], -C[2], -C[4], 1-C[5], -C[6], -C[8], -C[9], 1-C[10]]</l>
+<l>    b1:=[b1, C[3], C[7], C[11]]</l>
+<l>    b2:=[b2, D[3], D[7], D[11]]</l>
+<c>    </c>
+<l>endif  </l>
+<c>    *误差</c>
+<l>*     read_pose (ImgPath + 'me_GInTool_z.dat', X1)</l>
+<l>*     hom_mat3d_to_pose (C, CC)</l>
+<l>*     pose_compose (CC, X1, CX)</l>
+<l>*     hom_mat3d_to_pose (D, DD)</l>
+<l>*     pose_compose (X1, DD, XD)</l>
+<l>*     wucha:=CX-XD</l>
+<l>*     wucha[0]:=wucha[0]*1000</l>
+<l>*     wucha[1]:=wucha[1]*1000</l>
+<l>*     wucha[2]:=wucha[2]*1000</l>
+<c></c>
+<l>endfor</l>
+<l>endfor</l>
+<l>* stop()</l>
+<l>    tuple_length (b, Lengthb)</l>
+<l>    create_matrix (Lengthb, 12, 0, C_D)</l>
+<l>    set_full_matrix (C_D, a)</l>
+<l>    create_matrix (Lengthb, 1, 0, F)</l>
+<l>    set_full_matrix (F, b)</l>
+<c></c>
+<l>    mult_matrix (C_D, C_D, 'ATB', C_DTC_D)</l>
+<l>    invert_matrix (C_DTC_D, 'general', 0, C_DTC_D_inv) </l>
+<l>    mult_matrix (C_D, F, 'ATB', C_DTF)</l>
+<l>    mult_matrix (C_DTC_D_inv, C_DTF, 'AB', R)</l>
+<l>    get_full_matrix (R, Values)</l>
+<l>    create_matrix (4,3,0,e)</l>
+<l>    set_full_matrix (e, Values)</l>
+<l>    transpose_matrix (e, et)</l>
+<l>    get_full_matrix (et, Values1)</l>
+<l>    hom_mat3d_to_pose (Values1, Pose)</l>
+<l>    pose_to_hom_mat3d (Pose, HomMat3D)</l>
+<l>*     write_pose (Pose3, ImgPath + 'me_GInTool_ckcg.dat')</l>
+<l>*     stop()</l>
+<l>    create_matrix (3,3,0,RRR)</l>
+<l>    VR:=[HomMat3D[0],HomMat3D[1],HomMat3D[2],HomMat3D[4],HomMat3D[5],HomMat3D[6],HomMat3D[8],HomMat3D[9],HomMat3D[10]]</l>
+<l>    set_full_matrix (RRR, VR)</l>
+<l>    create_matrix (Lengthb/4, 1, 0, B1)</l>
+<l>    set_full_matrix (B1, b1)</l>
+<l>    create_matrix (Lengthb/12, 3, 0, B2)</l>
+<l>    set_full_matrix (B2, b2)</l>
+<l>    mult_matrix (B2, RRR, 'ABT', Rtd)</l>
+<l>    get_full_matrix (Rtd, rtd)</l>
+<l>    create_matrix (Lengthb/4, 1, 0, R_td)</l>
+<l>    set_full_matrix (R_td, rtd)</l>
+<l>    sub_matrix (B1, R_td, C_Rtd)</l>
+<l>    create_matrix (Lengthb/4, 3, 0, I_Rc)</l>
+<l>    set_full_matrix (I_Rc, a1)</l>
+<l>    mult_matrix (I_Rc, I_Rc, 'ATB', I_RcTI_Rc)</l>
+<l>    invert_matrix (I_RcTI_Rc, 'general', 0, I_RcTI_Rc_inv) </l>
+<l>    mult_matrix (I_Rc, C_Rtd, 'ATB', I_RcTC_Rtd)</l>
+<l>    mult_matrix (I_RcTI_Rc_inv, I_RcTC_Rtd, 'AB', ttt)</l>
+<l>    get_full_matrix (ttt, tV)</l>
+<l>    VR1:=[HomMat3D[0],HomMat3D[1],HomMat3D[2],tV[0],HomMat3D[4],HomMat3D[5],HomMat3D[6],tV[1],HomMat3D[8],HomMat3D[9],HomMat3D[10],tV[2]]</l>
+<l>    hom_mat3d_to_pose (VR1, POSE2)</l>
+<l>*     write_pose (POSE2, ImgPath + 'GInTool.dat')</l>
+<l>stop()</l>
+<c></c>
+<c>*求基in相    </c>
+<l>c:=[]</l>
+<l>d:=[]</l>
+<l>for K := 1 to NumImages by 1</l>
+<l>    read_image (ILs, ImgPath_R + 'left/image_' + K$'02d')</l>
+<l>    map_image (ILs, Map1,ImageLs)</l>
+<l>*     find_caltab (ImageLs, CaltabLs, CaltabFile, SizeGauss, MarkThresh, MinDiamMarks)</l>
+<l>    dev_display (ImageLs)</l>
+<l>*     find_marks_and_pose (ImageLs, CaltabLs, CaltabFile, StartCamParam, StartThresh, DeltaThresh, MinThresh, Alpha, MinContLength, MaxDiamMarks, RCoordL, CCoordL, GinCs)</l>
+<l>    *disp_caltab (WindowHandle1, CaltabFile, StartCamParam, GinC, 1)</l>
+<l>    read_pose (ImgPath_R + 'GinC_'+ K$'02d'+'.dat', GinCs)</l>
+<l>    disp_3d_coord_system (WindowHandle1, StartCamParam, GinCs, 0.06)</l>
+<l>    pose_to_hom_mat3d (GinCs, GC)</l>
+<l>    read_pose (DataNameStart + K$'02d' + '.dat', ToolInBasePoses)</l>
+<l>    pose_to_hom_mat3d (ToolInBasePoses, Base_H_Tools)</l>
+<l>    pose_invert (ToolInBasePoses, BinTool33)</l>
+<l>    read_pose (ImgPath + 'GInTool.dat', GinTools)</l>
+<l>    pose_to_hom_mat3d (GinTools, Tool_H_Gs)</l>
+<l>    hom_mat3d_compose(Base_H_Tools, Tool_H_Gs, GB)</l>
+<c>    </c>
+<c>    *此时的基in相</c>
+<l>    hom_mat3d_invert (GB, Gs_H_Base)</l>
+<l>    hom_mat3d_compose(GC, Gs_H_Base, C_H_Bases)</l>
+<l>    hom_mat3d_to_pose (C_H_Bases, Pose1)</l>
+<l>    c:=[c, GB[0], 0, 0, GB[4], 0, 0, GB[8], 0, 0, 0, 0, 0]</l>
+<l>    c:=[c, GB[1], 0, 0, GB[5], 0, 0, GB[9], 0, 0, 0, 0, 0]</l>
+<l>    c:=[c, GB[2], 0, 0, GB[6], 0, 0, GB[10], 0, 0, 0, 0, 0]</l>
+<l>    c:=[c, 0, GB[0], 0, 0, GB[4], 0, 0, GB[8], 0, 0, 0, 0]</l>
+<l>    c:=[c, 0, GB[1], 0, 0, GB[5], 0, 0, GB[9], 0, 0, 0, 0]</l>
+<l>    c:=[c, 0, GB[2], 0, 0, GB[6], 0, 0, GB[10], 0, 0, 0, 0]</l>
+<l>    c:=[c, 0, 0, GB[0], 0, 0, GB[4], 0, 0, GB[8], 0, 0, 0]</l>
+<l>    c:=[c, 0, 0, GB[1], 0, 0, GB[5], 0, 0, GB[9], 0, 0, 0]</l>
+<l>    c:=[c, 0, 0, GB[2], 0, 0, GB[6], 0, 0, GB[10], 0, 0, 0]</l>
+<l>    c:=[c, GB[3], 0, 0, GB[7], 0, 0, GB[11], 0, 0, 1, 0, 0]</l>
+<l>    c:=[c, 0, GB[3], 0, 0, GB[7], 0, 0, GB[11], 0, 0, 1, 0]</l>
+<l>    c:=[c, 0, 0, GB[3], 0, 0, GB[7], 0, 0, GB[11], 0, 0, 1]</l>
+<l>    d:=[d, GC[0], GC[1], GC[2], GC[4], GC[5], GC[6], GC[8], GC[9], GC[10], GC[3], GC[7], GC[11]]</l>
+<c>    </c>
+<l>endfor    </l>
+<l>* stop()</l>
+<l>tuple_length (d, Lengthd)</l>
+<l>create_matrix (Lengthd, 12, 0, gb)</l>
+<l>set_full_matrix (gb, c)</l>
+<l>create_matrix (Lengthd, 1, 0, gc)</l>
+<l>set_full_matrix (gc, d)</l>
+<c>    </c>
+<l>    mult_matrix (gb, gb, 'ATB', gbTgb)</l>
+<l>    invert_matrix (gbTgb, 'general', 0, gbTgb_inv) </l>
+<l>    mult_matrix (gb, gc, 'ATB', gbTgc)</l>
+<l>    mult_matrix (gbTgb_inv, gbTgc, 'AB', T)</l>
+<l>    get_full_matrix (T, Values2)</l>
+<l>    create_matrix (4,3,0,e2)</l>
+<l>    set_full_matrix (e2, Values2)</l>
+<l>    transpose_matrix (e2, et2)</l>
+<l>    get_full_matrix (et2, Values12)</l>
+<l>    hom_mat3d_to_pose (Values12, Pose2)</l>
+<l>    pose_to_hom_mat3d (Pose2, HomMat3D)</l>
+<l>*     write_pose (Pose2, ImgPath + 'BinC.dat')</l>
+<c>   </c>
+<l>    stop() </l>
+<c>*验证、  </c>
+<l>for t := 1 to NumImages by 1</l>
+<l>    read_image (ILs, ImgPath_R + 'left/image_' + t$'02d')</l>
+<l>    map_image (ILs, Map1,ImageLs)</l>
+<l>*     find_caltab (ImageLs, CaltabLs, CaltabFile, SizeGauss, MarkThresh, MinDiamMarks)</l>
+<l>    dev_display (ImageLs)</l>
+<l>*     find_marks_and_pose (ImageLs, CaltabLs, CaltabFile, StartCamParam, StartThresh, DeltaThresh, MinThresh, Alpha, MinContLength, MaxDiamMarks, RCoordL, CCoordL, GinCy0)</l>
+<l>*     write_pose (GinCy, ImgPath + 'GinCck_'+ t$'02d'+'.dat')</l>
+<l>    read_pose (ImgPath_R + 'GinC_' + t$'02d'+'.dat',GinCy)</l>
+<l>    disp_3d_coord_system (WindowHandle1, StartCamParam, GinCy, 0.08)</l>
+<l>    read_pose (ImgPath + 'BinC.dat', BinCLy)</l>
+<l>    pose_invert (BinCLy, CLinBy)</l>
+<l>    pose_compose (CLinBy, GinCy, GinBy)</l>
+<l>    read_pose (ImgPath + 'GInTool.dat', GinTy)</l>
+<l>    pose_invert (GinTy, TinGy)</l>
+<l>    pose_compose (GinBy, TinGy, TinBy)</l>
+<l>    pose_to_hom_mat3d (TinBy, HomMat3D1)</l>
+<c>    </c>
+<l>    read_pose (DataNameStart + t$'02d' + '.dat', ToolInBasePosey)</l>
+<l>    pose_to_hom_mat3d (ToolInBasePosey, HomMat3D2)</l>
+<l>    pose_compose (BinCLy, ToolInBasePosey, ToolinC1)</l>
+<l>*     disp_3d_coord_system (WindowHandle1, StartCamParam, ToolinC1, 0.02)</l>
+<c>    *此时的板in相</c>
+<l>    pose_compose (BinCLy, ToolInBasePosey, TinC44y)</l>
+<l>    pose_compose (TinC44y, GinTy,Ginc44y)</l>
+<l>    disp_3d_coord_system (WindowHandle1, StartCamParam, Ginc44y, 0.05)</l>
+<l>    cha1:=TinBy-ToolInBasePosey</l>
+<l>    cha1[0]:=cha1[0]*1000</l>
+<l>    cha1[1]:=cha1[1]*1000</l>
+<l>    cha1[2]:=cha1[2]*1000</l>
+<l>    cha2:=Ginc44y-GinCy</l>
+<l>    cha2[0]:=cha2[0]*1000</l>
+<l>    cha2[1]:=cha2[1]*1000</l>
+<l>    cha2[2]:=cha2[2]*1000</l>
+<l>stop()</l>
+<l>endfor</l>
+<c></c>
+<l>read_pose (ImgPath_R + 'GinC_' + t$'02d'+'.dat',GinCy)</l>
+<l>    read_pose (ImgPath + 'me_BinC1.dat', BinCLy)</l>
+<l>    pose_invert (BinCLy, CLinBy)</l>
+<l>    pose_compose (CLinBy, GinCy, GinBy)</l>
+<l>    read_pose (ImgPath + 'me_GInTool1.dat', GinTy)</l>
+<l>    pose_invert (GinTy, TinGy)</l>
+<l>    pose_compose (GinBy, TinGy, TinBy)</l>
+<l>    pose_to_hom_mat3d (TinBy, HomMat3D1)</l>
+<c>    </c>
+<l>    read_pose (DataNameStart + t$'02d' + '.dat', ToolInBasePosey)</l>
+<l>    pose_to_hom_mat3d (ToolInBasePosey, HomMat3D2)</l>
+<l>    pose_compose (BinCLy, ToolInBasePosey, ToolinC1)</l>
+<l>*     disp_3d_coord_system (WindowHandle1, StartCamParam, ToolinC1, 0.01)</l>
+<c>    *此时的板in相</c>
+<l>    pose_compose (BinCLy, ToolInBasePosey, TinC44y)</l>
+<l>    pose_compose (TinC44y, GinTy,Ginc44y)</l>
+<l>    disp_3d_coord_system (WindowHandle1, StartCamParam, Ginc44y, 0.04)</l>
+<l>cha3:=TinBy-ToolInBasePosey</l>
+<l>cha3[0]:=cha3[0]*1000</l>
+<l>    cha3[1]:=cha3[1]*1000</l>
+<l>    cha3[2]:=cha3[2]*1000</l>
+<l>    cha4:=Ginc44y-GinCy</l>
+<l>   cha4[0]:=cha4[0]*1000</l>
+<l>    cha4[1]:=cha4[1]*1000</l>
+<l>    cha4[2]:=cha4[2]*1000</l>
+<c>    </c>
+<l>    fgf1:=abs(cha3)-abs(cha1)</l>
+<l>    fgf2:=abs(cha4)-abs(cha2)</l>
+<c></c>
+<l>stop() </l>
+<c></c>
+<c>    </c>
+<c>   </c>
+<c>     </c>
+<c>     </c>
+<c>     </c>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+</hdevelop>
