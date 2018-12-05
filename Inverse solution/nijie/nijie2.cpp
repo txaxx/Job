@@ -251,9 +251,9 @@ int main()
 		
 		if(-180*RAD2ANG<=j1[i / 4] && j1[i / 4 ]<=180 * RAD2ANG)
 			if (-115 * RAD2ANG<= j2[i / 2] && j2[i / 2]<= 115 * RAD2ANG)
-				if (-140 * RAD2ANG<= j3[i / 4] && j3[i / 4]<= 220 * RAD2ANG)
+				if (-40 * RAD2ANG<= j3[i / 4] && j3[i / 4]<= 220 * RAD2ANG)
 					if (-180 * RAD2ANG<= j4[i] && j4[i]<= 180 * RAD2ANG)
-						if (-2250 * RAD2ANG<= j5[i] && j5[i]<= 75 * RAD2ANG)
+						if (-225 * RAD2ANG<= j5[i] && j5[i]<= 75 * RAD2ANG)
 							if (-180 * RAD2ANG<= j6[i] && j6[i]<= 180 * RAD2ANG)
 							{
 								printf("\n %.2lf, %.2lf, %.2lf, %.2lf, %.2lf, %.2lf\n",
